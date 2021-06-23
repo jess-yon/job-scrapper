@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -45,11 +46,20 @@ func getPage(page int) {
 	searchCards := doc.Find(".jobsearch-SerpJobCard")
 	searchCards.Each(func(i int, card *goquery.Selection) {
 		id, _ := card.Attr("data-jk")   //? 'Attr' method는 값, 존재여부를 리턴
-		title := card.Find(".title > a").Text()  // title class 안의 a 태그를 찾음 => text로 변환		
-		location := card.Find(".sjcl").Text()
+		title := cleanString(card.Find(".title > a").Text())  // title class 안의 a 태그를 찾음 => text로 변환		
+		location := cleanString(card.Find(".sjcl").Text())
 
 		fmt.Println(id, title, location)
 	})
+}
+
+
+// 공백을 제거해서 한 줄의 string으로 만들어 주는 함수 (strings 패키지 이용)
+func cleanString(str string) string {
+	// TrimSpace로 양쪽에 공백을 없애 줌
+	// -> Fields로 하나의 배열로 만들어 줌
+	// -> Join으로 다시 합쳐줌
+	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")
 }
 
 
