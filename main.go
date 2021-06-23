@@ -33,6 +33,7 @@ func main() {
 	}
 
 	writeJobs(jobs)	//! => the combination of many arrays
+	fmt.Println("Done, extracted ", len(jobs))
 }
 
 
@@ -42,12 +43,17 @@ func writeJobs(jobs []extractedJob) {
 	checkErr(err)  // check err
 
 	w := csv.NewWriter(file)
-	
 	defer w.Flush()  // w 파일 저장 (defer => writeJobs 함수가 끝난 뒤 실행)
 
 	headers := []string{"ID", "Title", "Location", "Salary", "Summary"}  // header를 순서대로 정해서 배열에 담음
 	wErr := w.Write(headers)  // 배열에 담아놓은 내용을 파일에 입력
 	checkErr(wErr)  // check err
+
+	for _, job := range jobs {
+		jobSlice := []string{"https://kr.indeed.com/viewjob?jk=" + job.id, job.title, job.location, job.salary, job.summary}
+		jwErr := w.Write(jobSlice)
+		checkErr(jwErr)  // check err
+	}
 }
 
 
