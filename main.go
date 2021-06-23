@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -22,18 +24,30 @@ var baseURL string = "https://kr.indeed.com/jobs?q=devops&limit=50"
 
 func main() {
 	var jobs []extractedJob   // jobs는 extractedJob을 요소로 하는 배열
-
 	totalPages := getPages() // for문의 범위(length)를 구함
 	
 	for i := 0; i < totalPages; i++ {
-		extractedJobs := getPage(i)  //? getting all the jobs
-		
+		extractedJobs := getPage(i)  //? getting all the jobs on each page
 		jobs = append(jobs, extractedJobs...)
 		//? To append the CONTENTS of extractedJobs, simply add '...' => similar to 'Spread Syntax' in JS
 	}
 
-	fmt.Println(jobs)
-	//! => this main func is the combination of many arrays
+	writeJobs(jobs)	//! => the combination of many arrays
+}
+
+
+//! 가져온 jobs data를 csv파일로 저장해주는 함수
+func writeJobs(jobs []extractedJob) {
+	file, err := os.Create("jobs.csv")
+	checkErr(err)  // check err
+
+	w := csv.NewWriter(file)
+	
+	defer w.Flush()  // w 파일 저장 (defer => writeJobs 함수가 끝난 뒤 실행)
+
+	headers := []string{"ID", "Title", "Location", "Salary", "Summary"}  // header를 순서대로 정해서 배열에 담음
+	wErr := w.Write(headers)  // 배열에 담아놓은 내용을 파일에 입력
+	checkErr(wErr)  // check err
 }
 
 
@@ -78,7 +92,6 @@ func extractJob(card *goquery.Selection) extractedJob {
 		salary: salary, 
 		summary: summary,
 	}
-	//fmt.Println(id, title, location, salary, summary)
 }
 
 
@@ -114,7 +127,7 @@ func getPages() int {
 }
 
 
-//! 에러 여부 체크
+//! 에러 여부를 체크해주는 함수
 func checkErr(err error) {
 	if err != nil {
 		log.Fatalln(err)
@@ -122,7 +135,7 @@ func checkErr(err error) {
 }
 
 
-//! 응답 코드 체크
+//! 응답 코드를 체크해주는 함수
 func checkCode(res *http.Response) {
 	if res.StatusCode != 200 {
 		log.Fatalln("Request failed with Status: ", res.StatusCode)
