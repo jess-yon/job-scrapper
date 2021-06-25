@@ -45,7 +45,7 @@ func writeJobs(jobs []extractedJob) {
 	w := csv.NewWriter(file)
 	defer w.Flush()  // w 파일 저장 (defer => writeJobs 함수가 끝난 뒤 실행)
 
-	headers := []string{"ID", "Title", "Location", "Salary", "Summary"}  // header를 순서대로 정해서 배열에 담음
+	headers := []string{"Link", "Title", "Location", "Salary", "Summary"}  // header를 순서대로 정해서 배열에 담음
 	wErr := w.Write(headers)  // 배열에 담아놓은 내용을 파일에 입력
 	checkErr(wErr)  // check err
 
@@ -60,6 +60,8 @@ func writeJobs(jobs []extractedJob) {
 //! 페이지 별 상세내용을 가져오는 함수
 func getPage(page int) []extractedJob {
 	var jobs []extractedJob   // jobs는 extractedJob을 요소로 하는 배열
+	c := make(chan extractedJob)
+	
 	pageURL := baseURL + "&start=" + strconv.Itoa(page * 50) // strconv.Itoa() 는 number => string으로 변환
 	fmt.Println(pageURL)
 
@@ -75,23 +77,28 @@ func getPage(page int) []extractedJob {
 	searchCards := doc.Find(".jobsearch-SerpJobCard")
 
 	searchCards.Each(func(i int, card *goquery.Selection) {
-		job := extractJob(card)
-		jobs = append(jobs, job)  // jobs라는 배열에 job이라는 변수(extractJob(card))를 하나씩 넣어준다
+		go extractJob(card, c)  // channel로 getPage func <-> extractJob func 커뮤니케이션
 	})
+
+	for i := 0; i < searchCards.Length(); i++ {
+		job := <-c
+		jobs = append(jobs, job)  // jobs라는 배열에 job이라는 변수(extractJob(card))를 하나씩 넣어준다
+	}
 
 	return jobs  // job을 모아둔 배열을 return
 }
 
 
 //! Job 하나를 추출하는 함수
-func extractJob(card *goquery.Selection) extractedJob {
+func extractJob(card *goquery.Selection, c chan<-extractedJob) {
 	id, _ := card.Attr("data-jk")   //? 'Attr' method는 값, 존재여부를 리턴
 	title := cleanString(card.Find(".title > a").Text())  // title class 안의 a 태그를 찾음 => text로 변환		
 	location := cleanString(card.Find(".sjcl").Text())
 	salary := cleanString(card.Find(".salaryText").Text())
 	summary := cleanString(card.Find(".summary").Text())
 
-	return extractedJob {
+	//! return할 필요 없음 => channel에 값을 전송하기!
+	c <- extractedJob {
 		id: id, 
 		title: title, 
 		location: location, 
