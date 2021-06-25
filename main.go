@@ -24,10 +24,15 @@ var baseURL string = "https://kr.indeed.com/jobs?q=devops&limit=50"
 
 func main() {
 	var jobs []extractedJob   // jobs는 extractedJob을 요소로 하는 배열
+	c := make(chan []extractedJob) // jobs를 보내는 채널
 	totalPages := getPages() // for문의 범위(length)를 구함
 	
 	for i := 0; i < totalPages; i++ {
-		extractedJobs := getPage(i)  //? getting all the jobs on each page
+		go getPage(i, c)  //? getting all the jobs on each page
+	}
+
+	for i := 0; i < totalPages; i++ {
+		extractedJobs := <-c
 		jobs = append(jobs, extractedJobs...)
 		//? To append the CONTENTS of extractedJobs, simply add '...' => similar to 'Spread Syntax' in JS
 	}
@@ -37,28 +42,9 @@ func main() {
 }
 
 
-//! 가져온 jobs data를 csv파일로 저장해주는 함수
-func writeJobs(jobs []extractedJob) {
-	file, err := os.Create("jobs.csv")
-	checkErr(err)  // check err
-
-	w := csv.NewWriter(file)
-	defer w.Flush()  // w 파일 저장 (defer => writeJobs 함수가 끝난 뒤 실행)
-
-	headers := []string{"Link", "Title", "Location", "Salary", "Summary"}  // header를 순서대로 정해서 배열에 담음
-	wErr := w.Write(headers)  // 배열에 담아놓은 내용을 파일에 입력
-	checkErr(wErr)  // check err
-
-	for _, job := range jobs {
-		jobSlice := []string{"https://kr.indeed.com/viewjob?jk=" + job.id, job.title, job.location, job.salary, job.summary}
-		jwErr := w.Write(jobSlice)
-		checkErr(jwErr)  // check err
-	}
-}
-
-
 //! 페이지 별 상세내용을 가져오는 함수
-func getPage(page int) []extractedJob {
+//! bridge 역할 (goroutine을 생성해서 job slice 전달받고, main의 channel로 전송)
+func getPage(page int, mainC chan<- []extractedJob) {
 	var jobs []extractedJob   // jobs는 extractedJob을 요소로 하는 배열
 	c := make(chan extractedJob)
 	
@@ -81,11 +67,11 @@ func getPage(page int) []extractedJob {
 	})
 
 	for i := 0; i < searchCards.Length(); i++ {
-		job := <-c
+		job := <-c   // 메시지가 channel에 전달되기를 기다렸다가, 메시지를 받으면
 		jobs = append(jobs, job)  // jobs라는 배열에 job이라는 변수(extractJob(card))를 하나씩 넣어준다
 	}
 
-	return jobs  // job을 모아둔 배열을 return
+	mainC <- jobs  // job을 모아둔 배열을 mainChannel에 보냄
 }
 
 
@@ -137,6 +123,26 @@ func getPages() int {
 	})
 
 	return pages
+}
+
+
+//! 가져온 jobs data를 csv파일로 저장해주는 함수
+func writeJobs(jobs []extractedJob) {
+	file, err := os.Create("jobs.csv")
+	checkErr(err)  // check err
+
+	w := csv.NewWriter(file)
+	defer w.Flush()  // w 파일 저장 (defer => writeJobs 함수가 끝난 뒤 실행)
+
+	headers := []string{"Link", "Title", "Location", "Salary", "Summary"}  // header를 순서대로 정해서 배열에 담음
+	wErr := w.Write(headers)  // 배열에 담아놓은 내용을 파일에 입력
+	checkErr(wErr)  // check err
+
+	for _, job := range jobs {
+		jobSlice := []string{"https://kr.indeed.com/viewjob?jk=" + job.id, job.title, job.location, job.salary, job.summary}
+		jwErr := w.Write(jobSlice)
+		checkErr(jwErr)  // check err
+	}
 }
 
 
