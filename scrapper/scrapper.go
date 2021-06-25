@@ -79,10 +79,10 @@ func getPage(page int, url string, mainC chan<- []extractedJob) {
 //! Job 하나를 추출하는 함수
 func extractJob(card *goquery.Selection, c chan<-extractedJob) {
 	id, _ := card.Attr("data-jk")   //? 'Attr' method는 값, 존재여부를 리턴
-	title := cleanString(card.Find(".title > a").Text())  // title class 안의 a 태그를 찾음 => text로 변환		
-	location := cleanString(card.Find(".sjcl").Text())
-	salary := cleanString(card.Find(".salaryText").Text())
-	summary := cleanString(card.Find(".summary").Text())
+	title := CleanString(card.Find(".title > a").Text())  // title class 안의 a 태그를 찾음 => text로 변환		
+	location := CleanString(card.Find(".sjcl").Text())
+	salary := CleanString(card.Find(".salaryText").Text())
+	summary := CleanString(card.Find(".summary").Text())
 
 	//! return할 필요 없음 => channel에 값을 전송하기!
 	c <- extractedJob {
@@ -96,7 +96,7 @@ func extractJob(card *goquery.Selection, c chan<-extractedJob) {
 
 
 //! 공백을 제거해서 한 줄의 string으로 만들어 주는 함수 (strings 패키지 이용)
-func cleanString(str string) string {
+func CleanString(str string) string {
 	//? TrimSpace로 양쪽에 공백을 없애 줌
 	//? -> Fields로 하나의 배열로 만들어 줌
 	//? -> Join으로 다시 합쳐줌
